@@ -2,7 +2,3 @@ SpeechRecognition
 pyttsx3
 pyaudio
 wikipedia
-google-generativeai
-gTTS
-pipwin
-streamlit
