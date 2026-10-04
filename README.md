@@ -50,63 +50,53 @@ The system is designed to be **modular**, **lightweight**, and **easily extensib
 
 ## 🏗 System Architecture
 
-```
-╔══════════════════════════════════════════════════════════════════════════╗
-║                         JARVIS — System Architecture                     ║
-╠══════════════════════════════════════════════════════════════════════════╣
-║                                                                          ║
-║   ┌────────────────────────────────────────────────────────────────┐     ║
-║   │                     INPUT LAYER                                │     ║
-║   │                                                                │     ║
-║   │   🎤 Microphone                                                │     ║
-║   │       │                                                        │     ║
-║   │       ▼                                                        │     ║
-║   │   PyAudio (audio stream capture)                              │     ║
-║   │       │                                                        │     ║
-║   │       ▼                                                        │     ║
-║   │   SpeechRecognition (ambient noise adjustment + VAD)          │     ║
-║   │       │                                                        │     ║
-║   │       ▼                                                        │     ║
-║   │   Google STT API ──► Raw text query                           │     ║
-║   └───────────────────────────┬────────────────────────────────────┘     ║
-║                               │                                          ║
-║   ┌───────────────────────────▼────────────────────────────────────┐     ║
-║   │                  PROCESSING LAYER (NLU)                        │     ║
-║   │                                                                │     ║
-║   │   Intent Router (keyword-based matching)                      │     ║
-║   │   ┌──────────────────────────────────────────────────┐        │     ║
-║   │   │  "wikipedia" ──► WikiHandler                     │        │     ║
-║   │   │  "time"       ──► TimeHandler                    │        │     ║
-║   │   │  "name"       ──► IdentityHandler                │        │     ║
-║   │   │  "open google"──► BrowserHandler                 │        │     ║
-║   │   │  "exit"       ──► ShutdownHandler                │        │     ║
-║   │   └──────────────────────────────────────────────────┘        │     ║
-║   └───────────────────────────┬────────────────────────────────────┘     ║
-║                               │                                          ║
-║   ┌───────────────────────────▼────────────────────────────────────┐     ║
-║   │                   KNOWLEDGE LAYER                              │     ║
-║   │                                                                │     ║
-║   │   Wikipedia Search API ──► Title resolution                   │     ║
-║   │   Wikipedia REST API   ──► Page summary extraction            │     ║
-║   │   datetime module      ──► System clock                       │     ║
-║   │   webbrowser module    ──► OS browser control                 │     ║
-║   └───────────────────────────┬────────────────────────────────────┘     ║
-║                               │                                          ║
-║   ┌───────────────────────────▼────────────────────────────────────┐     ║
-║   │                    OUTPUT LAYER                                │     ║
-║   │                                                                │     ║
-║   │   macOS `say` CLI ──► TTS audio synthesis                     │     ║
-║   │       │  ├── Voice: Daniel (British EN)                       │     ║
-║   │       │  └── Voice: Rishi  (Indian EN)                        │     ║
-║   │       ▼                                                        │     ║
-║   │   🔊 Speaker / Headphones                                      │     ║
-║   └────────────────────────────────────────────────────────────────┘     ║
-║                                                                          ║
-║   ┌────────────────────────────────────────────────────────────────┐     ║
-║   │                  CROSS-CUTTING CONCERNS                        │     ║
-║   │  📝 File Logger (logs/application.log) ── All exceptions       │     ║
-║   └────────────────────────────────────────────────────────────────┘     ║
-╚══════════════════════════════════════════════════════════════════════════╝
+```mermaid
+flowchart TD
+    subgraph INPUT["🎤 INPUT LAYER"]
+        A[🎙️ Microphone] -->|Raw Audio| B[PyAudio\nAudio Stream Capture]
+        B -->|PCM Data| C[SpeechRecognition\nAmbient Noise Adj. + VAD]
+        C -->|Audio Buffer| D[☁️ Google STT API]
+        D -->|Transcript| E[📝 Raw Text Query]
+    end
+
+    subgraph NLU["🧠 PROCESSING LAYER — Intent Router"]
+        E --> F{Keyword\nMatching}
+        F -->|"wikipedia"| G[📚 WikiHandler]
+        F -->|"time"| H[🕐 TimeHandler]
+        F -->|"name"| I[🤖 IdentityHandler]
+        F -->|"open google"| J[🌐 BrowserHandler]
+        F -->|"exit"| K[👋 ShutdownHandler]
+    end
+
+    subgraph KNOW["📡 KNOWLEDGE LAYER"]
+        G --> L[Wikipedia Search API\nTitle Resolution]
+        L --> M[Wikipedia REST API\nSummary Extraction]
+        H --> N[datetime module\nSystem Clock]
+        J --> O[webbrowser module\nOS Browser Control]
+    end
+
+    subgraph OUTPUT["🔊 OUTPUT LAYER"]
+        M --> P[macOS say CLI\nTTS Synthesis]
+        N --> P
+        I --> P
+        O --> P
+        K --> P
+        P -->|"Voice: Daniel 🇬🇧 / Rishi 🇮🇳"| Q[🔈 Speaker / Headphones]
+    end
+
+    subgraph LOG["📝 CROSS-CUTTING CONCERNS"]
+        R[File Logger\nlogs/application.log]
+    end
+
+    C -.->|Errors| R
+    G -.->|Errors| R
+    D -.->|Errors| R
+
+    style INPUT fill:#1a1a2e,stroke:#e94560,color:#fff
+    style NLU fill:#16213e,stroke:#0f3460,color:#fff
+    style KNOW fill:#0f3460,stroke:#533483,color:#fff
+    style OUTPUT fill:#533483,stroke:#e94560,color:#fff
+    style LOG fill:#2c2c54,stroke:#aaa,color:#fff,stroke-dasharray: 5 5
 ```
 
 ---
@@ -127,38 +117,49 @@ The system is designed to be **modular**, **lightweight**, and **easily extensib
 
 ## 🔄 Data Flow
 
-```
-User speaks
-    │
-    ▼
-[PyAudio] captures raw PCM audio from microphone
-    │
-    ▼
-[SpeechRecognition] adjusts for ambient noise (0.5s),
-    applies Voice Activity Detection, buffers audio
-    │
-    ▼
-[Google STT API] (HTTPS) ──► returns transcript string
-    │
-    ▼
-[Intent Router] lowercases + scans for keywords
-    │
-    ├─── "wikipedia" ──► clean_query() removes noise words
-    │                ──► wiki_summary() hits Wikipedia Search API
-    │                ──► fetches summary via REST API
-    │                ──► speak() reads result aloud
-    │
-    ├─── "time"      ──► datetime.now().strftime() 
-    │                ──► speak() reads current time
-    │
-    ├─── "name"      ──► speak("My name is JARVIS")
-    │
-    ├─── "open google"──► webbrowser.open("google.com")
-    │
-    └─── "exit"      ──► speak() + exit()
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant M as 🎙️ Microphone
+    participant SR as 🔊 SpeechRecognition
+    participant G as ☁️ Google STT
+    participant IR as 🧠 Intent Router
+    participant W as 📚 Wikipedia API
+    participant TTS as 🗣️ macOS say
+    participant L as 📝 Logger
 
-[speak()] ──► subprocess.run(["say", "-r", "175", "-v", VOICE, text])
-           ──► macOS synthesises audio ──► Speaker output
+    U->>M: Speaks command
+    M->>SR: Raw PCM audio
+    Note over SR: Ambient noise adjust (0.5s)<br/>Voice Activity Detection
+    SR->>G: Audio buffer (HTTPS)
+    G-->>SR: Transcript string
+    SR->>IR: Raw text query (lowercased)
+
+    alt "wikipedia" detected
+        IR->>IR: clean_query() — strip filler words
+        IR->>W: Search API → resolve title
+        W-->>IR: Best matching title
+        IR->>W: REST Summary API → fetch extract
+        W-->>IR: Page summary (2 sentences)
+        IR->>TTS: speak(summary)
+    else "time" detected
+        IR->>IR: datetime.now().strftime()
+        IR->>TTS: speak(current time)
+    else "name" detected
+        IR->>TTS: speak("My name is JARVIS")
+    else "open google" detected
+        IR->>IR: webbrowser.open("google.com")
+        IR->>TTS: speak("opening google")
+    else "exit" detected
+        IR->>TTS: speak("Good bye sir")
+        IR->>IR: exit()
+    end
+
+    TTS->>U: 🔈 Audio output via Speaker
+
+    Note over SR,L: Errors logged to logs/application.log
+    SR-->>L: Recognition errors
+    IR-->>L: API / runtime errors
 ```
 
 ---
