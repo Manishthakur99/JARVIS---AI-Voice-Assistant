@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 
 
-# ---------- Voice (macOS 'say' command) ----------
+
 def get_voice():
     out = subprocess.run(["say", "-v", "?"], capture_output=True, text=True).stdout.lower()
     for name in ["daniel", "rishi"]:   # Daniel = British (classic Jarvis), Rishi = Indian English
@@ -37,8 +37,7 @@ def speak(text):
     if VOICE:
         cmd += ["-v", VOICE]
     cmd.append(text)
-    subprocess.run(cmd)   # jab tak bol nahi leta, code aage nahi badhega
-# -------------------------------------------------
+    subprocess.run(cmd) 
 
 
 def takeCommand():
@@ -70,8 +69,6 @@ def wish_me():
 
     speak("I am JARVIS. Tell me sir how can i help you?")
 
-
-# ---------- Wikipedia (requests se, 'wikipedia' library ke bina) ----------
 HEADERS = {"User-Agent": "JarvisAssistant/1.0 (manish@example.com)"}
 
 
@@ -84,7 +81,7 @@ def clean_query(text):
 
 
 def wiki_summary(topic, sentences=2):
-    # Step 1: best matching page title dhundho
+
     search = requests.get(
         "https://en.wikipedia.org/w/api.php",
         params={"action": "query", "list": "search", "srsearch": topic,
@@ -96,7 +93,6 @@ def wiki_summary(topic, sentences=2):
         return None
     title = hits[0]["title"]
 
-    # Step 2: us title ka summary lo
     r = requests.get(
         "https://en.wikipedia.org/api/rest_v1/page/summary/" + title.replace(" ", "_"),
         headers=HEADERS, timeout=10,
@@ -114,8 +110,6 @@ while True:
 
     if query == "none":
         continue
-
-    # Wikipedia sabse upar, taaki "name" jaise words se na takraye
     if "wikipedia" in query:
         speak("Searching wikipedia")
         query = clean_query(query)
